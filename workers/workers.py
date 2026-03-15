@@ -1,9 +1,10 @@
 import asyncio
 from sqlalchemy import select,update
 from database import AsyncSessionLocal
-from redis_client import get_task_from_queue
+from redis_client import QUEUE_NAME, get_task_from_queue
 from models import Task
 from task_handlers import TASK_HANDLERS
+from workers import redis_client
 
 MAX_RETRIES = 3
 
@@ -35,7 +36,8 @@ async def process_task(task_id):
             if task.retry_count >= MAX_RETRIES:
                 task.status = "failed"
             else:
-                task.status = "pending"
+                task.status = "PENDING"
+                await redis_client.lpush(QUEUE_NAME, str(task.id))
             await session.commit()
 
 async def worker_loop():
